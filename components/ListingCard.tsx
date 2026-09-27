@@ -158,10 +158,14 @@ export function ListingCard({
             <VotePanel roommates={roommates} votes={votes} onVote={onVote} />
 
             <div className="mt-auto flex flex-col gap-2 sm:flex-row">
-              <Button variant="outline" className="flex-1" onClick={() => setOpen(true)}>
+              <Button
+                variant="outline"
+                className="h-auto min-h-10 flex-1 whitespace-normal py-2 text-center"
+                onClick={() => setOpen(true)}
+              >
                 See full trade-off breakdown
               </Button>
-              <BrokerInquiryDialog listing={listing} />
+              <BrokerInquiryDialog listing={listing} className="flex-1" />
             </div>
           </CardContent>
         </Card>

@@ -13,8 +13,15 @@ import {
 } from "@/components/ui/dialog";
 import { buildBrokerInquiryMessage } from "@/lib/brokerInquiry";
 import { Listing } from "@/lib/types";
+import { cn } from "@/lib/utils";
 
-export function BrokerInquiryDialog({ listing }: { listing: Listing }) {
+export function BrokerInquiryDialog({
+  listing,
+  className,
+}: {
+  listing: Listing;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const message = useMemo(() => buildBrokerInquiryMessage(listing), [listing]);
@@ -35,8 +42,13 @@ export function BrokerInquiryDialog({ listing }: { listing: Listing }) {
 
   return (
     <>
-      <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setOpen(true)}>
-        <MessageCircle className="h-4 w-4" /> Draft WhatsApp Inquiry
+      <Button
+        variant="outline"
+        size="sm"
+        className={cn("h-auto min-h-10 gap-1.5 whitespace-normal py-2 text-center", className)}
+        onClick={() => setOpen(true)}
+      >
+        <MessageCircle className="h-4 w-4 shrink-0" /> WhatsApp Inquiry
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

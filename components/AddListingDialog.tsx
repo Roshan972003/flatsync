@@ -137,8 +137,11 @@ export function AddListingDialog() {
         <DialogHeader>
           <DialogTitle>Add a listing</DialogTitle>
           <DialogDescription>
-            Pick a real Pune locality and we&apos;ll fetch live commute times to
-            everyone&apos;s reference points automatically, same as the built-in listings.
+            The listings already loaded here were pulled together from a few different
+            brokerage sites to get you started. Found one somewhere else? Add it manually
+            below — pick a real Pune locality and we&apos;ll fetch live commute times to
+            everyone&apos;s reference points automatically, same as the built-in ones. Once
+            added, it&apos;s treated exactly like the rest for matching and voting.
           </DialogDescription>
         </DialogHeader>
 
