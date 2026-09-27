@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flatsync-dev",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": ["-c", "export PATH=\"$HOME/.local/nodejs/node-v20.18.1-darwin-arm64/bin:$PATH\" && npm run dev"],
+      "port": 3000
+    }
+  ]
+}
