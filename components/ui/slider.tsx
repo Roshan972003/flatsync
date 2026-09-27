@@ -22,7 +22,14 @@ const Slider = React.forwardRef<
     {(props.value ?? props.defaultValue ?? [0]).map((_, i) => (
       <SliderPrimitive.Thumb
         key={i}
-        className="block h-5 w-5 rounded-full border-2 border-primary bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+        className={cn(
+          "relative block h-5 w-5 rounded-full border-2 border-primary bg-background shadow transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
+          // Invisible, larger hit area around the visible handle — the 20px
+          // visible thumb is too small to reliably grab with a trackpad drag,
+          // so extend the actual clickable/draggable region without changing
+          // how it looks.
+          "before:absolute before:-inset-3 before:content-['']"
+        )}
       />
     ))}
   </SliderPrimitive.Root>
