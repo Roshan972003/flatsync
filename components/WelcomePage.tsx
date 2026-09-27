@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Home, Heart, Users, ListChecks, Sparkles, ArrowRight } from "lucide-react";
+import { Home, Heart, Users, ListChecks, Sparkles, ArrowRight, PlayCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const STEPS_PREVIEW = [
@@ -22,7 +22,13 @@ const STEPS_PREVIEW = [
   },
 ];
 
-export function WelcomePage({ onStart }: { onStart: () => void }) {
+export function WelcomePage({
+  onStart,
+  onLoadDemo,
+}: {
+  onStart: () => void;
+  onLoadDemo: () => void;
+}) {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -94,6 +100,9 @@ export function WelcomePage({ onStart }: { onStart: () => void }) {
           <Button size="lg" onClick={onStart} className="gap-2 px-8">
             Let&apos;s find our flat
             <ArrowRight className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onLoadDemo} className="gap-1.5 text-muted-foreground">
+            <PlayCircle className="h-4 w-4" /> Or load scenario: Riya, Meera &amp; Kavita
           </Button>
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <Heart className="h-3 w-3 text-primary" /> Made for the three of you, not just one

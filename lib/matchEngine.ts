@@ -13,7 +13,7 @@ import {
 
 const ROOMMATE_COUNT_DIVISOR = 3;
 
-interface RelaxationIgnore {
+export interface RelaxationIgnore {
   roommateId: RoommateId;
   constraint: ConstraintKey;
 }
@@ -309,9 +309,10 @@ function computeCompromiseFairness(
 
 export function evaluateListing(
   listing: Listing,
-  profiles: RoommateProfile[]
+  profiles: RoommateProfile[],
+  override?: RelaxationIgnore
 ): ListingEvaluation {
-  const hardConstraints = checkHardConstraints(listing, profiles);
+  const hardConstraints = checkHardConstraints(listing, profiles, override);
   const roommateEvaluations = profiles.map((p) => evaluateRoommate(listing, p));
 
   const combinedScore = roommateEvaluations.reduce(

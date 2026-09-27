@@ -18,6 +18,10 @@ import { ConstraintConflictAlert } from "@/components/ConstraintConflictAlert";
 import { AddListingDialog } from "@/components/AddListingDialog";
 import { WhatIfPanel } from "@/components/WhatIfPanel";
 import { ShareSummaryButton } from "@/components/ShareSummaryButton";
+import { CopyShareLinkButton } from "@/components/CopyShareLinkButton";
+import { DecisionAuditLog } from "@/components/DecisionAuditLog";
+import { AgreementBrief } from "@/components/AgreementBrief";
+import { DealbreakerOverridePanel } from "@/components/DealbreakerOverridePanel";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -189,6 +193,9 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
         <div className="flex flex-wrap gap-2">
           <AddListingDialog />
           {topThree.length > 0 && <ShareSummaryButton topListings={topThree} />}
+          {topThree.length > 0 && <AgreementBrief topPick={topThree[0]} />}
+          <CopyShareLinkButton profiles={profiles} currentStep={3} />
+          <DecisionAuditLog listings={listings} profiles={profileList} />
           <Button variant="outline" size="sm" onClick={onBack}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Edit answers
           </Button>
@@ -205,7 +212,12 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
       />
 
       {passing.length === 0 && (
-        <ConstraintConflictAlert failing={failing} suggestions={suggestions} combos={combos} />
+        <ConstraintConflictAlert
+          failing={failing}
+          suggestions={suggestions}
+          combos={combos}
+          profiles={profileList}
+        />
       )}
 
       {topThree.length > 0 && (
@@ -367,14 +379,7 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
                   <CardDescription>{evaluation.listing.locality}</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-0">
-                  <ul className="space-y-0.5">
-                    {evaluation.hardConstraints.violations.slice(0, 3).map((v, i) => (
-                      <li key={i} className="text-xs text-muted-foreground">
-                        <span className="font-medium text-destructive">{v.roommateName}:</span>{" "}
-                        {v.detail}
-                      </li>
-                    ))}
-                  </ul>
+                  <DealbreakerOverridePanel listing={evaluation.listing} profiles={profileList} />
                 </CardContent>
               </Card>
             ))}

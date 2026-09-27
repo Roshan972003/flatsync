@@ -24,8 +24,11 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { RadarScore } from "@/components/RadarScore";
 import { VotePanel } from "@/components/VotePanel";
 import { RoomRentSplitter } from "@/components/RoomRentSplitter";
+import { NetCostCalculator } from "@/components/NetCostCalculator";
 import { CommuteMatrix } from "@/components/CommuteMatrix";
 import { PropertyVisitChecklist } from "@/components/PropertyVisitChecklist";
+import { BrokerInquiryDialog } from "@/components/BrokerInquiryDialog";
+import { Separator } from "@/components/ui/separator";
 import { useFlatSyncStore } from "@/lib/store";
 import { ListingEvaluation, ListingVotes, RoommateId, VoteValue } from "@/lib/types";
 import { buildTradeoffSummary } from "@/lib/matchEngine";
@@ -154,13 +157,12 @@ export function ListingCard({
 
             <VotePanel roommates={roommates} votes={votes} onVote={onVote} />
 
-            <Button
-              variant="outline"
-              className="mt-auto"
-              onClick={() => setOpen(true)}
-            >
-              See full trade-off breakdown
-            </Button>
+            <div className="mt-auto flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" className="flex-1" onClick={() => setOpen(true)}>
+                See full trade-off breakdown
+              </Button>
+              <BrokerInquiryDialog listing={listing} />
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -180,7 +182,7 @@ export function ListingCard({
           <Tabs defaultValue="overview">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="overview">Overview</TabsTrigger>
-              <TabsTrigger value="rooms">Rooms & rent</TabsTrigger>
+              <TabsTrigger value="rooms">Rooms & costs</TabsTrigger>
               <TabsTrigger value="commute">Commute</TabsTrigger>
               <TabsTrigger value="visit">Visit checklist</TabsTrigger>
             </TabsList>
@@ -257,8 +259,10 @@ export function ListingCard({
               </div>
             </TabsContent>
 
-            <TabsContent value="rooms">
+            <TabsContent value="rooms" className="space-y-5">
               <RoomRentSplitter listing={listing} roommates={roommates} />
+              <Separator />
+              <NetCostCalculator listing={listing} roommateCount={roommates.length} />
             </TabsContent>
 
             <TabsContent value="commute">

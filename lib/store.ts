@@ -43,6 +43,8 @@ interface FlatSyncState {
     item: ChecklistItemKey,
     patch: Partial<ChecklistItemState>
   ) => void;
+  loadDemoScenario: () => void;
+  hydrateFromShared: (shared: { profiles: Record<RoommateId, RoommateProfile>; currentStep: 1 | 2 | 3 }) => void;
 }
 
 const defaultProfiles: Record<RoommateId, RoommateProfile> = {
@@ -215,6 +217,25 @@ export const useFlatSyncStore = create<FlatSyncState>()(
               },
             },
           };
+        }),
+      loadDemoScenario: () =>
+        set({
+          profiles: {
+            riya: { ...defaultProfiles.riya, completed: true },
+            meera: { ...defaultProfiles.meera, completed: true },
+            kavita: { ...defaultProfiles.kavita, completed: true },
+          },
+          listings: mockListings,
+          activeRoommate: "riya",
+          currentStep: 3,
+          votes: {},
+          visitChecklists: {},
+        }),
+      hydrateFromShared: (shared) =>
+        set({
+          profiles: shared.profiles,
+          currentStep: shared.currentStep,
+          activeRoommate: "riya",
         }),
     }),
     {

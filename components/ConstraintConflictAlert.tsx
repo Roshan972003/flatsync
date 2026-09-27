@@ -4,8 +4,9 @@ import { motion } from "framer-motion";
 import { AlertTriangle, Lightbulb, GitMerge } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ListingEvaluation } from "@/lib/types";
+import { ListingEvaluation, RoommateProfile } from "@/lib/types";
 import { ConstraintConflictCombo, RelaxationSuggestion } from "@/lib/matchEngine";
+import { DealbreakerOverridePanel } from "@/components/DealbreakerOverridePanel";
 
 const CONSTRAINT_LABELS: Record<string, string> = {
   budget: "Budget",
@@ -21,10 +22,12 @@ export function ConstraintConflictAlert({
   failing,
   suggestions,
   combos,
+  profiles,
 }: {
   failing: ListingEvaluation[];
   suggestions: RelaxationSuggestion[];
   combos: ConstraintConflictCombo[];
+  profiles: RoommateProfile[];
 }) {
   const violationCounts: Record<string, number> = {};
   for (const evaluation of failing) {
@@ -120,16 +123,9 @@ export function ConstraintConflictAlert({
                     {evaluation.listing.locality}
                   </span>
                 </p>
-                <ul className="mt-1.5 space-y-1">
-                  {evaluation.hardConstraints.violations.map((v, i) => (
-                    <li key={i} className="text-xs text-muted-foreground">
-                      <span className="font-medium text-destructive">
-                        {v.roommateName}:
-                      </span>{" "}
-                      {v.detail}
-                    </li>
-                  ))}
-                </ul>
+                <div className="mt-1.5">
+                  <DealbreakerOverridePanel listing={evaluation.listing} profiles={profiles} />
+                </div>
               </div>
             ))}
           </div>

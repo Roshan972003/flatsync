@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { useFlatSyncStore } from "@/lib/store";
 import { RoommateId } from "@/lib/types";
+import { clearSharedStateFromLocation, readSharedStateFromLocation } from "@/lib/urlState";
 
 const ROOMMATES: { id: RoommateId; label: string }[] = [
   { id: "riya", label: "Riya" },
@@ -155,11 +156,20 @@ function EvaluationTransition() {
 export default function Page() {
   const currentStep = useFlatSyncStore((s) => s.currentStep);
   const goToStep = useFlatSyncStore((s) => s.goToStep);
+  const loadDemoScenario = useFlatSyncStore((s) => s.loadDemoScenario);
+  const hydrateFromShared = useFlatSyncStore((s) => s.hydrateFromShared);
   const [hydrated, setHydrated] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
+    const shared = readSharedStateFromLocation();
+    if (shared) {
+      hydrateFromShared(shared);
+      clearSharedStateFromLocation();
+      setShowWelcome(false);
+    }
     setHydrated(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -170,7 +180,13 @@ export default function Page() {
           <AnimatePresence mode="wait">
             {showWelcome ? (
               <motion.div key="welcome">
-                <WelcomePage onStart={() => setShowWelcome(false)} />
+                <WelcomePage
+                  onStart={() => setShowWelcome(false)}
+                  onLoadDemo={() => {
+                    loadDemoScenario();
+                    setShowWelcome(false);
+                  }}
+                />
               </motion.div>
             ) : (
               <motion.div key="app">
