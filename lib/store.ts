@@ -2,12 +2,25 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { RoommateId, RoommateProfile } from "./types";
+import { mockListings } from "./mockListings";
+import {
+  ChecklistItemKey,
+  ChecklistItemState,
+  Listing,
+  ListingVotes,
+  RoommateId,
+  RoommateProfile,
+  VisitChecklist,
+  VoteValue,
+} from "./types";
 
 interface FlatSyncState {
   profiles: Record<RoommateId, RoommateProfile>;
   activeRoommate: RoommateId;
   currentStep: 1 | 2 | 3;
+  listings: Listing[];
+  votes: Record<string, ListingVotes>;
+  visitChecklists: Record<string, VisitChecklist>;
   setActiveRoommate: (id: RoommateId) => void;
   updateProfile: (id: RoommateId, patch: Partial<RoommateProfile>) => void;
   updateHardConstraint: (
@@ -22,6 +35,14 @@ interface FlatSyncState {
   goToStep: (step: 1 | 2 | 3) => void;
   resetAll: () => void;
   allCompleted: () => boolean;
+  addListing: (listing: Listing) => void;
+  removeListing: (id: string) => void;
+  setVote: (listingId: string, roommateId: RoommateId, vote: VoteValue) => void;
+  setChecklistItem: (
+    listingId: string,
+    item: ChecklistItemKey,
+    patch: Partial<ChecklistItemState>
+  ) => void;
 }
 
 const defaultProfiles: Record<RoommateId, RoommateProfile> = {
@@ -110,6 +131,9 @@ export const useFlatSyncStore = create<FlatSyncState>()(
       profiles: defaultProfiles,
       activeRoommate: "riya",
       currentStep: 1,
+      listings: mockListings,
+      votes: {},
+      visitChecklists: {},
       setActiveRoommate: (id) => set({ activeRoommate: id }),
       updateProfile: (id, patch) =>
         set((state) => ({
@@ -153,11 +177,45 @@ export const useFlatSyncStore = create<FlatSyncState>()(
         })),
       goToStep: (step) => set({ currentStep: step }),
       resetAll: () =>
-        set({ profiles: defaultProfiles, activeRoommate: "riya", currentStep: 1 }),
+        set({
+          profiles: defaultProfiles,
+          activeRoommate: "riya",
+          currentStep: 1,
+          listings: mockListings,
+          votes: {},
+          visitChecklists: {},
+        }),
       allCompleted: () => {
         const { profiles } = get();
         return Object.values(profiles).every((p) => p.completed);
       },
+      addListing: (listing) =>
+        set((state) => ({ listings: [...state.listings, listing] })),
+      removeListing: (id) =>
+        set((state) => ({
+          listings: state.listings.filter((l) => l.id !== id),
+        })),
+      setVote: (listingId, roommateId, vote) =>
+        set((state) => ({
+          votes: {
+            ...state.votes,
+            [listingId]: { ...state.votes[listingId], [roommateId]: vote },
+          },
+        })),
+      setChecklistItem: (listingId, item, patch) =>
+        set((state) => {
+          const existingListing = state.visitChecklists[listingId] ?? {};
+          const existingItem = existingListing[item] ?? { status: "unchecked", note: "" };
+          return {
+            visitChecklists: {
+              ...state.visitChecklists,
+              [listingId]: {
+                ...existingListing,
+                [item]: { ...existingItem, ...patch },
+              },
+            },
+          };
+        }),
     }),
     {
       name: "flatsync-storage",

@@ -1,4 +1,5 @@
 import {
+  CompromiseFairness,
   ConstraintKey,
   HardConstraintResult,
   HardConstraintViolation,
@@ -264,6 +265,48 @@ function evaluateRoommate(
   };
 }
 
+const IMBALANCE_THRESHOLD_PERCENT = 60;
+
+/**
+ * Measures how evenly the *compromises* on a listing are spread across the
+ * group, as opposed to fairnessGap (which compares overall satisfaction
+ * scores). A listing can have a small score gap yet still dump nearly all
+ * its trade-offs on one person — this is what flags that.
+ */
+function computeCompromiseFairness(
+  roommateEvaluations: RoommateEvaluation[]
+): CompromiseFairness {
+  const weights = roommateEvaluations.map((re) =>
+    re.breakdown
+      .filter((b) => b.status === "compromise" && b.possible > 0)
+      .reduce((sum, b) => sum + b.possible, 0)
+  );
+  const total = weights.reduce((sum, w) => sum + w, 0);
+
+  if (total === 0) {
+    return {
+      dominantRoommateId: null,
+      dominantRoommateName: null,
+      dominantSharePercent: 0,
+      isImbalanced: false,
+    };
+  }
+
+  let maxIndex = 0;
+  weights.forEach((w, i) => {
+    if (w > weights[maxIndex]) maxIndex = i;
+  });
+
+  const dominantSharePercent = Math.round((weights[maxIndex] / total) * 100);
+
+  return {
+    dominantRoommateId: roommateEvaluations[maxIndex].roommateId,
+    dominantRoommateName: roommateEvaluations[maxIndex].roommateName,
+    dominantSharePercent,
+    isImbalanced: dominantSharePercent > IMBALANCE_THRESHOLD_PERCENT,
+  };
+}
+
 export function evaluateListing(
   listing: Listing,
   profiles: RoommateProfile[]
@@ -281,6 +324,7 @@ export function evaluateListing(
 
   const percents = roommateEvaluations.map((e) => e.scorePercent);
   const fairnessGap = Math.max(...percents) - Math.min(...percents);
+  const compromiseFairness = computeCompromiseFairness(roommateEvaluations);
 
   return {
     listing,
@@ -289,6 +333,7 @@ export function evaluateListing(
     combinedScore,
     combinedScorePercent,
     fairnessGap,
+    compromiseFairness,
   };
 }
 
@@ -396,4 +441,113 @@ export function suggestRelaxations(
   }
 
   return suggestions.sort((a, b) => b.additionalListings - a.additionalListings);
+}
+
+export interface ConstraintConflictCombo {
+  constraintA: ConstraintKey;
+  constraintB: ConstraintKey;
+  labelA: string;
+  labelB: string;
+  listingCount: number;
+}
+
+const CONSTRAINT_SHORT_LABELS: Record<ConstraintKey, string> = {
+  budget: "Budget",
+  location: "Excluded location",
+  commute: "Commute time",
+  lift: "Lift requirement",
+  bathrooms: "Bathroom count",
+  pet: "Pet-friendliness",
+  parking: "Parking",
+};
+
+/**
+ * Finds which *pairs* of constraint types most often eliminate a listing
+ * together (regardless of which roommate raised each one), e.g. "Budget vs
+ * Lift requirement" being the pair that jointly blocks the most listings.
+ * Surfaced so a stuck trio understands not just what's blocking things, but
+ * which two dealbreakers are compounding the problem.
+ */
+export function findConstraintConflictCombos(
+  failing: ListingEvaluation[]
+): ConstraintConflictCombo[] {
+  const comboCounts = new Map<string, ConstraintConflictCombo>();
+
+  for (const evaluation of failing) {
+    const constraintTypes = Array.from(
+      new Set(evaluation.hardConstraints.violations.map((v) => v.constraint))
+    ).sort();
+
+    for (let i = 0; i < constraintTypes.length; i++) {
+      for (let j = i + 1; j < constraintTypes.length; j++) {
+        const constraintA = constraintTypes[i];
+        const constraintB = constraintTypes[j];
+        const key = `${constraintA}:${constraintB}`;
+        const existing = comboCounts.get(key);
+        if (existing) {
+          existing.listingCount += 1;
+        } else {
+          comboCounts.set(key, {
+            constraintA,
+            constraintB,
+            labelA: CONSTRAINT_SHORT_LABELS[constraintA],
+            labelB: CONSTRAINT_SHORT_LABELS[constraintB],
+            listingCount: 1,
+          });
+        }
+      }
+    }
+  }
+
+  return Array.from(comboCounts.values())
+    .filter((c) => c.listingCount > 1)
+    .sort((a, b) => b.listingCount - a.listingCount);
+}
+
+/**
+ * Clones the given profiles with commute-minute and per-person budget caps
+ * loosened by the given amounts, for the "what-if" exploration panel. Never
+ * mutates the original profiles or touches persisted state.
+ */
+export function withRelaxedConstraints(
+  profiles: RoommateProfile[],
+  options: { extraCommuteMinutes: number; extraBudgetPercent: number }
+): RoommateProfile[] {
+  return profiles.map((p) => ({
+    ...p,
+    hardConstraints: {
+      ...p.hardConstraints,
+      maxCommuteMinutes:
+        p.hardConstraints.maxCommuteMinutes + options.extraCommuteMinutes,
+      maxBudget: Math.round(
+        p.hardConstraints.maxBudget * (1 + options.extraBudgetPercent / 100)
+      ),
+    },
+  }));
+}
+
+/**
+ * Formats the top listings into a plain-text breakdown suitable for pasting
+ * straight into a WhatsApp group chat.
+ */
+export function buildWhatsAppSummary(topListings: ListingEvaluation[]): string {
+  const lines: string[] = ["*FlatSync — Our top picks* 🏠", ""];
+
+  topListings.forEach((evaluation, i) => {
+    const { listing, combinedScorePercent } = evaluation;
+    lines.push(
+      `${i + 1}. ${listing.imageEmoji} *${listing.name}* — ${listing.locality}`
+    );
+    lines.push(
+      `   ₹${listing.monthlyRentTotal.toLocaleString("en-IN")}/mo total · ${combinedScorePercent}% combined match`
+    );
+    evaluation.roommateEvaluations.forEach((re) => {
+      lines.push(`   • ${re.roommateName}: ${re.scorePercent}% match`);
+    });
+    lines.push(`   _${buildTradeoffSummary(evaluation)}_`);
+    lines.push("");
+  });
+
+  lines.push("Sent from FlatSync 📲");
+  return lines.join("\n");
 }

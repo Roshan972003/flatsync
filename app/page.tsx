@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { RoommateForm } from "@/components/RoommateForm";
 import { ComparisonDashboard } from "@/components/ComparisonDashboard";
 import { StepIndicator } from "@/components/StepIndicator";
+import { WelcomePage } from "@/components/WelcomePage";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -155,6 +156,7 @@ export default function Page() {
   const currentStep = useFlatSyncStore((s) => s.currentStep);
   const goToStep = useFlatSyncStore((s) => s.goToStep);
   const [hydrated, setHydrated] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
 
   useEffect(() => {
     setHydrated(true);
@@ -165,26 +167,34 @@ export default function Page() {
       <Header />
       <main className="container py-8">
         {!hydrated ? null : (
-          <>
-            <StepIndicator currentStep={currentStep} />
-            <AnimatePresence mode="wait">
-              {currentStep === 1 && (
-                <motion.div key="step1" exit={{ opacity: 0 }}>
-                  <InputPhase />
-                </motion.div>
-              )}
-              {currentStep === 2 && (
-                <motion.div key="step2">
-                  <EvaluationTransition />
-                </motion.div>
-              )}
-              {currentStep === 3 && (
-                <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                  <ComparisonDashboard onBack={() => goToStep(1)} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </>
+          <AnimatePresence mode="wait">
+            {showWelcome ? (
+              <motion.div key="welcome">
+                <WelcomePage onStart={() => setShowWelcome(false)} />
+              </motion.div>
+            ) : (
+              <motion.div key="app">
+                <StepIndicator currentStep={currentStep} />
+                <AnimatePresence mode="wait">
+                  {currentStep === 1 && (
+                    <motion.div key="step1" exit={{ opacity: 0 }}>
+                      <InputPhase />
+                    </motion.div>
+                  )}
+                  {currentStep === 2 && (
+                    <motion.div key="step2">
+                      <EvaluationTransition />
+                    </motion.div>
+                  )}
+                  {currentStep === 3 && (
+                    <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <ComparisonDashboard onBack={() => goToStep(1)} />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
         )}
       </main>
     </div>

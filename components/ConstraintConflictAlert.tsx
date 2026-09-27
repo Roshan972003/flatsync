@@ -1,11 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { AlertTriangle, Lightbulb } from "lucide-react";
+import { AlertTriangle, Lightbulb, GitMerge } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ListingEvaluation } from "@/lib/types";
-import { RelaxationSuggestion } from "@/lib/matchEngine";
+import { ConstraintConflictCombo, RelaxationSuggestion } from "@/lib/matchEngine";
 
 const CONSTRAINT_LABELS: Record<string, string> = {
   budget: "Budget",
@@ -20,9 +20,11 @@ const CONSTRAINT_LABELS: Record<string, string> = {
 export function ConstraintConflictAlert({
   failing,
   suggestions,
+  combos,
 }: {
   failing: ListingEvaluation[];
   suggestions: RelaxationSuggestion[];
+  combos: ConstraintConflictCombo[];
 }) {
   const violationCounts: Record<string, number> = {};
   for (const evaluation of failing) {
@@ -63,6 +65,25 @@ export function ConstraintConflictAlert({
               </Badge>
             ))}
           </div>
+
+          {combos.length > 0 && (
+            <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3.5">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-destructive">
+                <GitMerge className="h-4 w-4" /> Compounding conflicts
+              </p>
+              <ul className="space-y-1.5">
+                {combos.slice(0, 3).map((c, i) => (
+                  <li key={i} className="text-xs text-foreground/80">
+                    <span className="font-semibold">
+                      {c.labelA} vs. {c.labelB}
+                    </span>{" "}
+                    — these two together rule out {c.listingCount} listings, more than
+                    either would alone.
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
           <div className="rounded-lg border border-primary/30 bg-primary/5 p-3.5">
             <p className="mb-2 flex items-center gap-1.5 text-sm font-semibold text-primary">

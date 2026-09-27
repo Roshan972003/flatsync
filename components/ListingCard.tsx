@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, AlertTriangle, MapPin, IndianRupee, Trophy, MessageSquareQuote } from "lucide-react";
+import { CheckCircle2, AlertTriangle, MapPin, IndianRupee, Trophy, MessageSquareQuote, Sparkles, Scale } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -20,7 +20,14 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ListingEvaluation } from "@/lib/types";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { RadarScore } from "@/components/RadarScore";
+import { VotePanel } from "@/components/VotePanel";
+import { RoomRentSplitter } from "@/components/RoomRentSplitter";
+import { CommuteMatrix } from "@/components/CommuteMatrix";
+import { PropertyVisitChecklist } from "@/components/PropertyVisitChecklist";
+import { useFlatSyncStore } from "@/lib/store";
+import { ListingEvaluation, ListingVotes, RoommateId, VoteValue } from "@/lib/types";
 import { buildTradeoffSummary } from "@/lib/matchEngine";
 import { formatINR } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -58,13 +65,21 @@ function RoommateQuickLine({
 export function ListingCard({
   evaluation,
   rank,
+  roommates,
+  votes,
+  onVote,
 }: {
   evaluation: ListingEvaluation;
   rank: number;
+  roommates: { id: RoommateId; name: string }[];
+  votes: ListingVotes;
+  onVote: (roommateId: RoommateId, vote: VoteValue) => void;
 }) {
   const [open, setOpen] = useState(false);
   const { listing, roommateEvaluations, combinedScorePercent, fairnessGap } = evaluation;
   const tradeoffSummary = useMemo(() => buildTradeoffSummary(evaluation), [evaluation]);
+  const checklist = useFlatSyncStore((s) => s.visitChecklists[listing.id] ?? {});
+  const setChecklistItem = useFlatSyncStore((s) => s.setChecklistItem);
 
   return (
     <>
@@ -103,14 +118,28 @@ export function ListingCard({
               {fairnessGap <= 15 && (
                 <Badge variant="secondary">Evenly balanced</Badge>
               )}
+              {evaluation.compromiseFairness.isImbalanced && (
+                <Badge variant="warning" className="gap-1">
+                  <Scale className="h-3 w-3" /> {evaluation.compromiseFairness.dominantRoommateName}{" "}
+                  carries {evaluation.compromiseFairness.dominantSharePercent}% of the compromises
+                </Badge>
+              )}
+              {listing.isCustom && (
+                <Badge variant="outline" className="gap-1">
+                  <Sparkles className="h-3 w-3" /> Added by your group
+                </Badge>
+              )}
             </div>
 
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>Combined match score</span>
-                <span className="font-semibold text-foreground">{combinedScorePercent}%</span>
+            <div className="flex items-center gap-3">
+              <RadarScore roommateEvaluations={roommateEvaluations} />
+              <div className="flex-1 space-y-1.5">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span>Combined match score</span>
+                  <span className="font-semibold text-foreground">{combinedScorePercent}%</span>
+                </div>
+                <Progress value={combinedScorePercent} />
               </div>
-              <Progress value={combinedScorePercent} />
             </div>
 
             <div className="space-y-2 border-t border-border pt-3">
@@ -122,6 +151,8 @@ export function ListingCard({
             <p className="rounded-lg bg-muted/60 px-3 py-2 text-xs italic text-muted-foreground">
               {tradeoffSummary}
             </p>
+
+            <VotePanel roommates={roommates} votes={votes} onVote={onVote} />
 
             <Button
               variant="outline"
@@ -146,75 +177,101 @@ export function ListingCard({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3.5">
-            <MessageSquareQuote className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-            <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-primary">
-                Trade-off summary
-              </p>
-              <p className="mt-0.5 text-sm text-foreground/90">{tradeoffSummary}</p>
-            </div>
-          </div>
+          <Tabs defaultValue="overview">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="rooms">Rooms & rent</TabsTrigger>
+              <TabsTrigger value="commute">Commute</TabsTrigger>
+              <TabsTrigger value="visit">Visit checklist</TabsTrigger>
+            </TabsList>
 
-          <div className="space-y-5">
-            {roommateEvaluations.map((re) => (
-              <div key={re.roommateId} className="rounded-lg border border-border p-3.5">
-                <div className="mb-2 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold">{re.roommateName}</p>
-                    <Badge
-                      variant={
-                        re.wins.length > re.compromises.length
-                          ? "success"
-                          : re.compromises.length > re.wins.length
-                          ? "warning"
-                          : "secondary"
-                      }
-                      className="text-[0.65rem]"
-                    >
-                      {re.wins.length > re.compromises.length
-                        ? "Mostly wins"
-                        : re.compromises.length > re.wins.length
-                        ? "Mostly compromises"
-                        : "Balanced"}
-                    </Badge>
-                  </div>
-                  <span className="text-sm font-semibold text-muted-foreground">
-                    {re.scorePercent}% match
-                  </span>
-                </div>
-                <div className="grid gap-1.5 sm:grid-cols-2">
-                  {re.breakdown
-                    .filter((b) => b.possible > 0)
-                    .map((b, i) => (
-                      <div
-                        key={i}
-                        className={cn(
-                          "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs",
-                          b.status === "win" && "bg-success/10 text-success",
-                          b.status === "compromise" && "bg-warning/10 text-warning"
-                        )}
-                      >
-                        {b.status === "win" ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                        ) : (
-                          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                        )}
-                        <span>
-                          {b.label}: {b.detail}
-                        </span>
-                      </div>
-                    ))}
-                </div>
-                {re.compromises.length > 0 && (
-                  <p className="mt-2 text-xs text-muted-foreground">
-                    <span className="font-medium text-foreground">Gives up:</span>{" "}
-                    {re.compromises.join("; ")}
+            <TabsContent value="overview" className="space-y-5">
+              <div className="flex items-start gap-2 rounded-lg border border-primary/20 bg-primary/5 p-3.5">
+                <MessageSquareQuote className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wide text-primary">
+                    Trade-off summary
                   </p>
-                )}
+                  <p className="mt-0.5 text-sm text-foreground/90">{tradeoffSummary}</p>
+                </div>
               </div>
-            ))}
-          </div>
+
+              <div className="space-y-5">
+                {roommateEvaluations.map((re) => (
+                  <div key={re.roommateId} className="rounded-lg border border-border p-3.5">
+                    <div className="mb-2 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold">{re.roommateName}</p>
+                        <Badge
+                          variant={
+                            re.wins.length > re.compromises.length
+                              ? "success"
+                              : re.compromises.length > re.wins.length
+                              ? "warning"
+                              : "secondary"
+                          }
+                          className="text-[0.65rem]"
+                        >
+                          {re.wins.length > re.compromises.length
+                            ? "Mostly wins"
+                            : re.compromises.length > re.wins.length
+                            ? "Mostly compromises"
+                            : "Balanced"}
+                        </Badge>
+                      </div>
+                      <span className="text-sm font-semibold text-muted-foreground">
+                        {re.scorePercent}% match
+                      </span>
+                    </div>
+                    <div className="grid gap-1.5 sm:grid-cols-2">
+                      {re.breakdown
+                        .filter((b) => b.possible > 0)
+                        .map((b, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs",
+                              b.status === "win" && "bg-success/10 text-success",
+                              b.status === "compromise" && "bg-warning/10 text-warning"
+                            )}
+                          >
+                            {b.status === "win" ? (
+                              <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                            ) : (
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                            )}
+                            <span>
+                              {b.label}: {b.detail}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                    {re.compromises.length > 0 && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Gives up:</span>{" "}
+                        {re.compromises.join("; ")}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="rooms">
+              <RoomRentSplitter listing={listing} roommates={roommates} />
+            </TabsContent>
+
+            <TabsContent value="commute">
+              <CommuteMatrix listing={listing} />
+            </TabsContent>
+
+            <TabsContent value="visit">
+              <PropertyVisitChecklist
+                checklist={checklist}
+                onUpdate={(item, patch) => setChecklistItem(listing.id, item, patch)}
+              />
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </>

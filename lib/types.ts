@@ -63,9 +63,15 @@ export interface Listing {
   coordinates: Coordinates;
   distanceToMetroKm: number;
   distanceToGymKm: number;
+  bedrooms: number;
   imageEmoji: string;
   description: string;
+  isCustom?: boolean;
 }
+
+export type VoteValue = "visit" | "maybe" | "veto";
+
+export type ListingVotes = Partial<Record<RoommateId, VoteValue>>;
 
 export type ConstraintKey =
   | "budget"
@@ -108,6 +114,13 @@ export interface RoommateEvaluation {
   compromises: string[];
 }
 
+export interface CompromiseFairness {
+  dominantRoommateId: RoommateId | null;
+  dominantRoommateName: string | null;
+  dominantSharePercent: number;
+  isImbalanced: boolean;
+}
+
 export interface ListingEvaluation {
   listing: Listing;
   hardConstraints: HardConstraintResult;
@@ -115,4 +128,22 @@ export interface ListingEvaluation {
   combinedScore: number;
   combinedScorePercent: number;
   fairnessGap: number;
+  compromiseFairness: CompromiseFairness;
 }
+
+export type RoomKey = "master" | "bedroom2" | "bedroom3";
+
+export type ChecklistItemKey =
+  | "waterPressure"
+  | "mobileSignal"
+  | "liftCondition"
+  | "peakTraffic";
+
+export type ChecklistStatus = "unchecked" | "good" | "bad";
+
+export interface ChecklistItemState {
+  status: ChecklistStatus;
+  note: string;
+}
+
+export type VisitChecklist = Partial<Record<ChecklistItemKey, ChecklistItemState>>;

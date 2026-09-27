@@ -15,6 +15,9 @@ import {
 } from "lucide-react";
 import { ListingCard } from "@/components/ListingCard";
 import { ConstraintConflictAlert } from "@/components/ConstraintConflictAlert";
+import { AddListingDialog } from "@/components/AddListingDialog";
+import { WhatIfPanel } from "@/components/WhatIfPanel";
+import { ShareSummaryButton } from "@/components/ShareSummaryButton";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,8 +27,11 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { evaluateAllListings, suggestRelaxations } from "@/lib/matchEngine";
-import { mockListings } from "@/lib/mockListings";
+import {
+  evaluateAllListings,
+  findConstraintConflictCombos,
+  suggestRelaxations,
+} from "@/lib/matchEngine";
 import { useFlatSyncStore } from "@/lib/store";
 import { applyLiveCommuteTimes, useLiveCommuteTimes } from "@/lib/useLiveCommute";
 import { ListingEvaluation, RoommateId } from "@/lib/types";
@@ -105,16 +111,23 @@ function SortableHeader({
 export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
   const profiles = useFlatSyncStore((s) => s.profiles);
   const resetAll = useFlatSyncStore((s) => s.resetAll);
+  const storeListings = useFlatSyncStore((s) => s.listings);
+  const votes = useFlatSyncStore((s) => s.votes);
+  const setVote = useFlatSyncStore((s) => s.setVote);
   const [expandedMatrix, setExpandedMatrix] = useState(false);
   const [sortKey, setSortKey] = useState<SortKey>("combined");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
 
   const profileList = useMemo(() => Object.values(profiles), [profiles]);
+  const roommates = useMemo(
+    () => profileList.map((p) => ({ id: p.id, name: p.name })),
+    [profileList]
+  );
   const commuteState = useLiveCommuteTimes();
 
   const listings = useMemo(
-    () => applyLiveCommuteTimes(mockListings, commuteState.data),
-    [commuteState.data]
+    () => applyLiveCommuteTimes(storeListings, commuteState.data),
+    [storeListings, commuteState.data]
   );
 
   const { passing, failing } = useMemo(() => {
@@ -125,6 +138,11 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
     if (passing.length > 0) return [];
     return suggestRelaxations(listings, profileList);
   }, [passing.length, listings, profileList]);
+
+  const combos = useMemo(() => {
+    if (passing.length > 0) return [];
+    return findConstraintConflictCombos(failing);
+  }, [passing.length, failing]);
 
   const topThree = passing.slice(0, 3);
   const topThreeIds = new Set(topThree.map((e) => e.listing.id));
@@ -168,7 +186,9 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
             <CommuteDataBadge status={commuteState.status} />
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          <AddListingDialog />
+          {topThree.length > 0 && <ShareSummaryButton topListings={topThree} />}
           <Button variant="outline" size="sm" onClick={onBack}>
             <ArrowLeft className="mr-1.5 h-4 w-4" /> Edit answers
           </Button>
@@ -178,8 +198,14 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
         </div>
       </div>
 
+      <WhatIfPanel
+        listings={listings}
+        profiles={profileList}
+        baselinePassingCount={passing.length}
+      />
+
       {passing.length === 0 && (
-        <ConstraintConflictAlert failing={failing} suggestions={suggestions} />
+        <ConstraintConflictAlert failing={failing} suggestions={suggestions} combos={combos} />
       )}
 
       {topThree.length > 0 && (
@@ -189,7 +215,14 @@ export function ComparisonDashboard({ onBack }: { onBack: () => void }) {
           </h3>
           <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {topThree.map((evaluation, i) => (
-              <ListingCard key={evaluation.listing.id} evaluation={evaluation} rank={i + 1} />
+              <ListingCard
+                key={evaluation.listing.id}
+                evaluation={evaluation}
+                rank={i + 1}
+                roommates={roommates}
+                votes={votes[evaluation.listing.id] ?? {}}
+                onVote={(roommateId, vote) => setVote(evaluation.listing.id, roommateId, vote)}
+              />
             ))}
           </div>
         </section>

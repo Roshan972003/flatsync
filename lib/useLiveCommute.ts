@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { CommuteHubKey, Listing } from "./types";
+import { CommuteHubKey, Coordinates, Listing } from "./types";
 
 export type CommuteMatrix = Record<string, Partial<Record<CommuteHubKey, number>>>;
 
@@ -46,6 +46,35 @@ export function useLiveCommuteTimes(): CommuteFetchState {
   }, []);
 
   return state;
+}
+
+/**
+ * One-off lookup used when a user adds a new listing: computes commute
+ * minutes from that listing's coordinates to all six hubs via a single OSRM
+ * request. Returns null commuteMinutes (with status "unavailable") if the
+ * routing service can't be reached, so the caller can fall back to a
+ * reasonable default instead of blocking the add.
+ */
+export async function fetchCommuteForOrigin(
+  origin: Coordinates
+): Promise<{ status: CommuteFetchStatus; data: Partial<Record<CommuteHubKey, number>> | null }> {
+  try {
+    const res = await fetch("/api/commute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ origin }),
+    });
+    const json: {
+      commuteMinutes: Partial<Record<CommuteHubKey, number>> | null;
+      source: CommuteFetchStatus;
+    } = await res.json();
+    return {
+      status: json.commuteMinutes ? json.source : "unavailable",
+      data: json.commuteMinutes,
+    };
+  } catch {
+    return { status: "unavailable", data: null };
+  }
 }
 
 /**
